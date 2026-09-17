@@ -348,8 +348,8 @@ void Pipeline::publishFrame(const Header& header, const Transform& T_W_I,
     publishDebugClouds(source_filtered, source_coarse, source_fine, undistorted, intensities, T_W_I,
                        header);
   }
-  publish(IntensityPointcloud(full_registered, intensities), header, "points/registered");
   publishLatestState(header);
+  publish(IntensityPointcloud(full_registered, intensities), header, "points/registered");
 }
 
 void Pipeline::publishLatestState(const Header& header) {
