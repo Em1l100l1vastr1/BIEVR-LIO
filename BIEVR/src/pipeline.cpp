@@ -359,37 +359,18 @@ void Pipeline::publishLatestState(const Header& header) {
     return;
   }
 
-  const State& x_j = states_.rbegin()->second;
-  Odometry x_i_j;
-  x_i_j.pose = Transform(latest_state.quat, latest_state.p);
-
-  // If there exist an odom before, use it to compute the relative transform between the two poses.
-  if (states_.rbegin() + 1 != states_.rend())
-  {
-    const State& x_i = (++states_.rbegin())->second;
-    Eigen::Isometric3d T_i = Eigen::Isometry3d::Identity();
-    T_i.linear() = x_i.quat.toRotationMatrix();
-    T_i.translation() = x_i.p;
-
-    Eigen::Isometric3d T_j = Eigen::Isometry3d::Identity();
-    T_j.linear() = x_j.quat.toRotationMatrix();
-    T_j.translation() = x_j.p;
-
-    Eigen::Isometric3d T_i_j = T_i.inverse() * T_j;
-    x_i_j.pose = Transform(T_i_j.linear(), T_i_j.translation());
-  }
-
+  const State& latest_state = states_.rbegin()->second;
+  Odometry odom;
+  odom.pose = Transform(latest_state.quat, latest_state.p);
   // The state velocity is expressed in the world frame; rotate it into the body
   // frame so it matches the odometry message's child frame. The angular velocity
   // comes straight from the latest gyro measurement (already in the body frame).
-  x_i_j.linear_velocity = x_j.quat.conjugate() * x_j.v;
-  x_i_j.angular_velocity = latest_gyro_;
-
+  odom.linear_velocity = latest_state.quat.conjugate() * latest_state.v;
+  odom.angular_velocity = latest_gyro_;
   // Regularisation handles both the pre-map startup (H=0 → 1e6·I, high uncertainty)
   // and degenerate geometries where some axes are unconstrained (H rank-deficient).
-  x_i_j.pose_covariance = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
-
-  publish(x_i_j, header, "odom", config_.body_frame);
+  odom.pose_covariance = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
+  publish(odom, header, "odom", config_.body_frame);
   publish(acc_bias_, header, "bias/acc");
   publish(gyro_bias_, header, "bias/gyro");
 }
