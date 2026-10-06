@@ -15,6 +15,7 @@ using Point = Eigen::Vector3d;
 using V3 = Eigen::Vector3d;
 using M3 = Eigen::Matrix3d;
 using M4 = Eigen::Matrix4d;
+using M6 = Eigen::Matrix<double, 6, 6>;
 using V3Map = Eigen::Map<const V3>;
 using QuatMap = Eigen::Map<const Quaternion>;
 
@@ -152,9 +153,13 @@ struct State {
 // Bundles a pose with its body-frame twist for publishing odometry messages.
 struct Odometry {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  Transform pose;       // T_W_B (pose in the map/world frame)
-  V3 linear_velocity;   // linear velocity expressed in the body frame
-  V3 angular_velocity;  // angular velocity expressed in the body frame
+  Transform pose;             // T_W_B (pose in the map/world frame)
+  V3 linear_velocity;         // linear velocity expressed in the body frame
+  V3 angular_velocity;        // angular velocity expressed in the body frame
+  // 6x6 pose covariance in [rot(3), trans(3)] order (optimizer convention).
+  // Zero-initialized; populated from H^{-1} of the registration Hessian once
+  // the map is running. publisher_base reorders to ROS [trans, rot] convention.
+  M6 pose_covariance = M6::Zero();
 };
 
 template <typename PointT>

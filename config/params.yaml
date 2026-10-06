@@ -6,9 +6,10 @@ map:
   weighted: True # Weighted pixel update
   max_size: 1500000 # Maximum number of voxels to keep in the map
   frame: "odom"
+  publish_deskewed: True
 
 preprocess:
-  downsample_resolution_m: 0.1 # Downsample points to this resolution [m]. In case of informed sampling, this
+  downsample_resolution_m: 0.05 # Downsample points to this resolution [m]. In case of informed sampling, this
   # corresponds to the high resolution voxels
   informed_sampling: True
 
@@ -18,10 +19,10 @@ optimization:
 imu:  
     window_s: 10 # Time window for the inertial optimization [s]
     t_init: 0.2 # Time to initialize bias and gravity [s]
-    frame: "imu"
+    frame: "sensor_init"
 
 debug:
-  publish_all_clouds: False # Publish all clouds (fine, coarse, deskewed)
+  publish_all_clouds: True # Publish all clouds (fine, coarse, deskewed)
   timing: False
   log: False
   dashboard: True # Fancy live status print (position, biases, timing, ...)

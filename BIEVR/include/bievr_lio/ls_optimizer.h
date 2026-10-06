@@ -197,6 +197,9 @@ class LsqRegistration {
   // pose). Reported on the dashboard as "Effective Points".
   int numEffectivePoints() const { return num_effective_points_; }
 
+  // Hessian (information matrix) from the last linearization, in [rot(3), trans(3)] order.
+  const Matrix66& hessian() const { return hessian_; }
+
  private:
   bool isConverged(const Transform& delta) const;
 
@@ -211,6 +214,7 @@ class LsqRegistration {
   std::vector<M3> skew_points_j_;
   bool converged_ = false;
   int num_effective_points_ = 0;
+  Matrix66 hessian_ = Matrix66::Zero();
 };
 
 }  // namespace bievr

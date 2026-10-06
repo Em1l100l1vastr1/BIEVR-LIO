@@ -138,6 +138,7 @@ void Pipeline::processFrame(const std::vector<ImuMeasurement>& imu_data,
   LsqRegistration optimizer(*map_, source_filtered, config_.registration);
   const Transform T_W_I = optimizer.computeTransformation(T_W_I_init);
   const int n_effective_points = optimizer.numEffectivePoints();
+  latest_reg_hessian_ = optimizer.hessian();
   align_timer.Stop();
 
   // Transform the full cloud using the estimated pose and add it to the map
@@ -366,6 +367,9 @@ void Pipeline::publishLatestState(const Header& header) {
   // comes straight from the latest gyro measurement (already in the body frame).
   odom.linear_velocity = latest_state.quat.conjugate() * latest_state.v;
   odom.angular_velocity = latest_gyro_;
+  // Regularisation handles both the pre-map startup (H=0 → 1e6·I, high uncertainty)
+  // and degenerate geometries where some axes are unconstrained (H rank-deficient).
+  odom.pose_covariance = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
   publish(odom, header, "odom", config_.body_frame);
   publish(acc_bias_, header, "bias/acc");
   publish(gyro_bias_, header, "bias/gyro");

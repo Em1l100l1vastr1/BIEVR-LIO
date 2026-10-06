@@ -164,6 +164,7 @@ bool LsqRegistration::stepLm(Transform& x0, Transform& delta) {
   Matrix66 H;
   Vector6 b;
   double y0 = linearize(x0, &H, &b);
+  hessian_ = H;
 
   if (lm_lambda_ < 0.0) {
     lm_lambda_ = config_.lm_init_lambda_factor * H.diagonal().array().abs().maxCoeff();

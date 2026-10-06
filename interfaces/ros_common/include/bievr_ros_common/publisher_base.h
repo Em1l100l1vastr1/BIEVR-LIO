@@ -80,6 +80,11 @@ class PublisherBase {
     // Twist is expressed in the child (body) frame.
     vecToMsg(odometry.linear_velocity, odom_msg.twist.twist.linear);
     vecToMsg(odometry.angular_velocity, odom_msg.twist.twist.angular);
+    // Reorder from optimizer [rot(3), trans(3)] to ROS [trans(3), rot(3)].
+    static constexpr int kPerm[6] = {3, 4, 5, 0, 1, 2};
+    for (int i = 0; i < 6; ++i)
+      for (int j = 0; j < 6; ++j)
+        odom_msg.pose.covariance[i * 6 + j] = odometry.pose_covariance(kPerm[i], kPerm[j]);
     publishers_[topic].publish(odom_msg);
 
     // Mirror the pose as a TF transform.

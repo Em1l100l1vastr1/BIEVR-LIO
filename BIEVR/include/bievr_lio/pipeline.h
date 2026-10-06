@@ -110,6 +110,9 @@ class Pipeline {
   V3 gravity_dir_ = V3(0, 0, 1);
   // Latest gyro reading, used to report the angular velocity in the odometry twist.
   V3 latest_gyro_ = V3::Zero();
+  // Hessian from the most recent point cloud registration; zero until the first
+  // successful registration. Used to derive the pose covariance for the odometry message.
+  Matrix66 latest_reg_hessian_ = Matrix66::Zero();
   // Accelerometer scale resolved during bias estimation (1 if raw, g if the IMU
   // reports gravity-normalized accelerations). Applied to all incoming IMU data.
   double imu_acc_scale_ = 1.0;
