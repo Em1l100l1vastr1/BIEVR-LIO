@@ -5,6 +5,7 @@
 
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <memory>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -57,6 +58,7 @@ struct Ros2Backend {
   using Odometry = nav_msgs::msg::Odometry;
   using Vector3Stamped = geometry_msgs::msg::Vector3Stamped;
   using TransformStamped = geometry_msgs::msg::TransformStamped;
+  using PoseCovStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
   explicit Ros2Backend(Handle node)
       : node_(node), tf_(std::make_shared<tf2_ros::TransformBroadcaster>(node)) {}

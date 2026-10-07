@@ -359,18 +359,38 @@ void Pipeline::publishLatestState(const Header& header) {
     return;
   }
 
-  const State& latest_state = states_.rbegin()->second;
-  Odometry odom;
-  odom.pose = Transform(latest_state.quat, latest_state.p);
+  const State& x_j = states_.rbegin()->second;
+  Odometry x_j_odom;
+  PoseCovariance x_i_j; 
+  x_i_j.pose = Transform(Eigen::Isometry3d::Identity());
+  x_j_odom.pose = Transform(x_j.quat, x_j.p);
+
+  // If there exist an odom before, use it to compute the relative transform between the two poses.
+  if (states_.size() > 1 )
+  {
+    const State& x_i = (++states_.rbegin())->second;
+    Eigen::Isometry3d T_i = Eigen::Isometry3d::Identity();
+    T_i.linear() = x_i.quat.toRotationMatrix();
+    T_i.translation() = x_i.p;
+
+    Eigen::Isometry3d T_j = Eigen::Isometry3d::Identity();
+    T_j.linear() = x_j.quat.toRotationMatrix();
+    T_j.translation() = x_j.p;
+
+    x_i_j.pose = Transform(T_i.inverse() * T_j);
+  }
+
   // The state velocity is expressed in the world frame; rotate it into the body
   // frame so it matches the odometry message's child frame. The angular velocity
   // comes straight from the latest gyro measurement (already in the body frame).
-  odom.linear_velocity = latest_state.quat.conjugate() * latest_state.v;
-  odom.angular_velocity = latest_gyro_;
+  x_j_odom.linear_velocity  = x_j.quat.conjugate() * x_j.v;
+  x_j_odom.angular_velocity = latest_gyro_;
+
   // Regularisation handles both the pre-map startup (H=0 → 1e6·I, high uncertainty)
   // and degenerate geometries where some axes are unconstrained (H rank-deficient).
-  odom.pose_covariance = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
-  publish(odom, header, "odom", config_.body_frame);
+  x_i_j.covariance = x_j_odom.pose_covariance = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
+  publish(x_j_odom, header, "odom", config_.body_frame);
+  publish(x_i_j, header, "rel_odom", config_.body_frame);
   publish(acc_bias_, header, "bias/acc");
   publish(gyro_bias_, header, "bias/gyro");
 }

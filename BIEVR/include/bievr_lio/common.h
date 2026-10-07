@@ -162,6 +162,13 @@ struct Odometry {
   M6 pose_covariance = M6::Zero();
 };
 
+struct PoseCovariance {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  Transform pose;             // T_W_B (pose in the map/world frame)
+  // 6x6 pose covariance in [rot(3), trans(3)] order (optimizer convention).
+  M6 covariance = M6::Zero();
+};
+
 template <typename PointT>
 inline PointcloudBase<PointT> operator*(const Transform& T, PointcloudBase<PointT> P) {
   P.points() = T * P.points().colwise().homogeneous();
