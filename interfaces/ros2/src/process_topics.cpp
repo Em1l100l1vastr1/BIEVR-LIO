@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 
   auto pipeline = std::make_shared<bievr::Pipeline>(config.pipeline_config);
   auto synchronizer = std::make_shared<bievr::Synchronizer>(pipeline);
-  auto lio_pub = std::make_shared<bievr::Publisher>(node, pipeline, "bievr_lio");
+  auto lio_pub = std::make_shared<bievr::Publisher>(node, pipeline, "bievr_lio", config.pipeline_config.publish_tf);
 
   // ROS2 has no ShapeShifter: discover the pointcloud topic's type from the
   // graph, then use a generic (serialized) subscription to handle whichever of

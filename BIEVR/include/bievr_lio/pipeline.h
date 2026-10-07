@@ -21,6 +21,7 @@ class Pipeline {
     RegistrationConfig registration;
     BIEVRMap::Config map;
     bool print_timing = false;
+    bool publish_tf = true;  // Publish the odometry pose as a TF transform
     bool publish_all_clouds = false;
     bool print_debug = false;      // when true, lower the log level to show DEBUG messages
     bool print_dashboard = false;  // when true, print the fancy live status dashboard

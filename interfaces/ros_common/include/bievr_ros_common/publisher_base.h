@@ -36,8 +36,8 @@ class PublisherBase {
   // If ns is non-empty, every topic published through this object is advertised
   // under that namespace (e.g. ns="bievr_lio" turns "odometry" into
   // "/bievr_lio/odometry"). Absolute topics (leading '/') are left untouched.
-  PublisherBase(Handle handle, std::shared_ptr<Pipeline> pipeline, const std::string& ns = "")
-      : backend_(std::move(handle)), ns_(ns) {
+  PublisherBase(Handle handle, std::shared_ptr<Pipeline> pipeline, const std::string& ns = "", const bool publish_tf = true)
+      : backend_(std::move(handle)), ns_(ns), publish_tf_(publish_tf) {
     registerTypes<Pointcloud, IntensityPointcloud, Odometry, V3>(pipeline);
   }
   virtual ~PublisherBase() = default;
@@ -88,6 +88,8 @@ class PublisherBase {
     publishers_[topic].publish(odom_msg);
 
     // Mirror the pose as a TF transform.
+    if (!publish_tf_) return true;
+
     typename Backend::TransformStamped transform_msg;
     transform_msg.header = odom_msg.header;
     transform_msg.child_frame_id = child_frame;
@@ -143,6 +145,7 @@ class PublisherBase {
   Backend backend_;
   std::string ns_;
   std::unordered_map<std::string, typename Backend::TypedPublisher> publishers_;
+  bool publish_tf_;
 };
 
 }  // namespace bievr
