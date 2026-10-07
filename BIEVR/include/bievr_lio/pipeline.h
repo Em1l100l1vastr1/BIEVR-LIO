@@ -85,6 +85,9 @@ class Pipeline {
     }
   }
 
+  // Returns the adjoint of T, to map the hessian to from world frame to body frame.
+  static M6 adjointSE3(const Transform& T);
+
   void publishFrame(const Header& header, const Transform& T_W_I, const Pointcloud& full_registered,
                     const Pointcloud& source_filtered, const Pointcloud& source_coarse,
                     const Pointcloud& source_fine, const Pointcloud& undistorted,

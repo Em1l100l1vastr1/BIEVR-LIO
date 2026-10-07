@@ -353,6 +353,20 @@ void Pipeline::publishFrame(const Header& header, const Transform& T_W_I,
   publish(IntensityPointcloud(full_registered, intensities), header, "points/registered");
 }
 
+M6 Pipeline::adjointSE3(const Transform& T) {
+  const Eigen::Matrix3d R = T.linear();
+  const V3& p = T.translation();
+  Eigen::Matrix3d p_cross;
+  p_cross <<     0, -p.z(),  p.y(),
+             p.z(),      0, -p.x(),
+            -p.y(),  p.x(),      0;
+  M6 Ad = M6::Zero();
+  Ad.block<3, 3>(0, 0) = R;
+  Ad.block<3, 3>(3, 0) = p_cross * R;
+  Ad.block<3, 3>(3, 3) = R;
+  return Ad;
+}
+
 void Pipeline::publishLatestState(const Header& header) {
   if (states_.empty()) {
     LOG(W, "No states to publish.");
@@ -365,19 +379,20 @@ void Pipeline::publishLatestState(const Header& header) {
   x_i_j.pose = Transform(Eigen::Isometry3d::Identity());
   x_j_odom.pose = Transform(x_j.quat, x_j.p);
 
+  M6 covariance_world_frame = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
+
   // If there exist an odom before, use it to compute the relative transform between the two poses.
-  if (states_.size() > 1 )
-  {
+  if (states_.size() > 1) {
     const State& x_i = (++states_.rbegin())->second;
-    Eigen::Isometry3d T_i = Eigen::Isometry3d::Identity();
-    T_i.linear() = x_i.quat.toRotationMatrix();
-    T_i.translation() = x_i.p;
-
-    Eigen::Isometry3d T_j = Eigen::Isometry3d::Identity();
-    T_j.linear() = x_j.quat.toRotationMatrix();
-    T_j.translation() = x_j.p;
-
+    const Transform T_i(x_i.quat, x_i.p);
+    const Transform T_j(x_j.quat, x_j.p);
     x_i_j.pose = Transform(T_i.inverse() * T_j);
+
+    const M6 Ad = adjointSE3(T_i);
+    const M6 hessian_body = Ad.transpose() * latest_reg_hessian_ * Ad;
+    x_i_j.covariance = (hessian_body + 1e-6 * M6::Identity()).inverse();
+
+    publish(x_i_j, header, "rel_odom", config_.body_frame);
   }
 
   // The state velocity is expressed in the world frame; rotate it into the body
@@ -386,11 +401,10 @@ void Pipeline::publishLatestState(const Header& header) {
   x_j_odom.linear_velocity  = x_j.quat.conjugate() * x_j.v;
   x_j_odom.angular_velocity = latest_gyro_;
 
-  // Regularisation handles both the pre-map startup (H=0 → 1e6·I, high uncertainty)
-  // and degenerate geometries where some axes are unconstrained (H rank-deficient).
-  x_i_j.covariance = x_j_odom.pose_covariance = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
+  // Rotate the world-frame Hessian into the body frame of x_i via the SE(3) adjoint,
+  // then invert to get the covariance. Falls back to identity adjoint on the first frame.
+  x_j_odom.pose_covariance = covariance_world_frame;
   publish(x_j_odom, header, "odom", config_.body_frame);
-  publish(x_i_j, header, "rel_odom", config_.body_frame);
   publish(acc_bias_, header, "bias/acc");
   publish(gyro_bias_, header, "bias/gyro");
 }
