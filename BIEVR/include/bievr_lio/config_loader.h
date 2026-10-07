@@ -181,6 +181,8 @@ inline void printConfigOverview(const Config& config) {
   os << "  log_path:             " << (hc.log_path.empty() ? "<none>" : hc.log_path) << "\n";
   os << "calibration (LiDAR -> IMU):\n";
   printExtrinsic(os, "T_I_L", hc.T_I_L);
+  os << "calibration (Base_link -> LiDAR ):\n";
+  printExtrinsic(os, "T_L_B", hc.T_L_B);
   os << "==================================================";
   LOG(I, os.str());
 }
@@ -300,6 +302,13 @@ inline bool loadConfigFromYaml(const std::vector<std::string>& yaml_paths, Confi
   if (!config_internal::extrinsicFromVectors(
           yaml.get<std::vector<double>>("calibration", "translation", {}),
           yaml.get<std::vector<double>>("calibration", "rotation", {}), "calibration", hc.T_I_L)) {
+    return false;
+  }
+
+  // --- calibration (LiDAR -> Base) ---
+  if (!config_internal::extrinsicFromVectors(
+          yaml.get<std::vector<double>>("sensor_pose", "translation", {}),
+          yaml.get<std::vector<double>>("sensor_pose", "rotation", {}), "sensor_pose", hc.T_L_B)) {
     return false;
   }
 
