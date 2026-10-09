@@ -20,6 +20,9 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(point_cloud_interfaces REQUIRED)
+find_package(point_cloud_transport REQUIRED)
+find_package(point_cloud_transport_plugins REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -43,6 +46,9 @@ set(ament_dependencies
   std_msgs
   tf2
   tf2_ros
+  point_cloud_interfaces
+  point_cloud_transport
+  point_cloud_transport_plugins
   rosbag2_cpp
   rosbag2_storage
 )
@@ -60,6 +66,7 @@ endif()
 # directly.
 add_executable(process_topics src/process_topics.cpp)
 add_executable(process_bag src/process_bag.cpp)
+add_executable(process_cloud src/process_cloud.cpp)
 
 foreach(target process_topics process_bag)
   ament_target_dependencies(${target} ${ament_dependencies})
@@ -79,7 +86,10 @@ foreach(target process_topics process_bag)
 endforeach()
 
 # ---- Install ----
-install(TARGETS process_topics process_bag
+ament_target_dependencies(process_cloud rclcpp point_cloud_transport point_cloud_interfaces sensor_msgs)
+target_include_directories(process_cloud PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+install(TARGETS process_topics process_bag process_cloud
   DESTINATION lib/${PROJECT_NAME}
 )
 install(DIRECTORY include/
