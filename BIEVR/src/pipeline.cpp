@@ -345,12 +345,16 @@ void Pipeline::publishFrame(const Header& header, const Transform& T_W_I,
                             const Pointcloud& full_registered, const Pointcloud& source_filtered,
                             const Pointcloud& source_coarse, const Pointcloud& source_fine,
                             const Pointcloud& undistorted, const IntensityView& intensities) {
+  publishLatestState(header);
+  Header body_header = header;
+  body_header.frame = config_.body_frame;
+  publish(IntensityPointcloud(undistorted, intensities), body_header, "points/undistorted");
+
   if (config_.publish_all_clouds) {
-    publishDebugClouds(source_filtered, source_coarse, source_fine, undistorted, intensities, T_W_I,
+    publishDebugClouds(source_filtered, source_coarse, source_fine, full_registered, intensities, T_W_I,
                        header);
   }
-  publishLatestState(header);
-  publish(IntensityPointcloud(full_registered, intensities), header, "points/registered");
+
 }
 
 M6 Pipeline::adjointSE3(const Transform& T) {
@@ -373,24 +377,26 @@ void Pipeline::publishLatestState(const Header& header) {
     return;
   }
 
-  const State& x_j = states_.rbegin()->second;
-  Odometry x_j_odom;
+  // Variables name conventions: name_idx0_idx1_ means the variable is expressed in the frame of idx0 and represents the state at idx1.
+  // For example, x_0_j is the state at time j expressed in the frame of time 0. (The frame of time 0 is the world/odom frame.)
+  const State& x_0_j = states_.rbegin()->second;
+  Odometry odom_0_j;
   PoseCovariance x_i_j; 
   x_i_j.pose = Transform(Eigen::Isometry3d::Identity());
-  x_j_odom.pose = Transform(x_j.quat, x_j.p);
+  odom_0_j.pose = Transform(x_0_j.quat, x_0_j.p);
 
-  M6 covariance_world_frame = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
+  M6 covariance_wrt_map = (latest_reg_hessian_ + 1e-6 * M6::Identity()).inverse();
 
   // If there exist an odom before, use it to compute the relative transform between the two poses.
   if (states_.size() > 1) {
-    const State& x_i = (++states_.rbegin())->second;
-    const Transform T_i(x_i.quat, x_i.p);
-    const Transform T_j(x_j.quat, x_j.p);
-    x_i_j.pose = Transform(T_i.inverse() * T_j);
+    const State& x_0_i = (++states_.rbegin())->second;
+    const Transform T_0_i(x_0_i.quat, x_0_i.p);
+    const Transform T_0_j(x_0_j.quat, x_0_j.p);
+    x_i_j.pose = Transform(T_0_i.inverse() * T_0_j);
 
-    const M6 Ad = adjointSE3(T_i);
-    const M6 hessian_body = Ad.transpose() * latest_reg_hessian_ * Ad;
-    x_i_j.covariance = (hessian_body + 1e-6 * M6::Identity()).inverse();
+    const M6 Ad = adjointSE3(T_0_i);
+    const M6 hessian_wrt_body = Ad.transpose() * latest_reg_hessian_ * Ad;
+    x_i_j.covariance = (hessian_wrt_body + 1e-6 * M6::Identity()).inverse();
 
     publish(x_i_j, header, "rel_odom", config_.body_frame);
   }
@@ -398,33 +404,30 @@ void Pipeline::publishLatestState(const Header& header) {
   // The state velocity is expressed in the world frame; rotate it into the body
   // frame so it matches the odometry message's child frame. The angular velocity
   // comes straight from the latest gyro measurement (already in the body frame).
-  x_j_odom.linear_velocity  = x_j.quat.conjugate() * x_j.v;
-  x_j_odom.angular_velocity = latest_gyro_;
+  odom_0_j.linear_velocity  = x_0_j.quat.conjugate() * x_0_j.v;
+  odom_0_j.angular_velocity = latest_gyro_;
 
   // Rotate the world-frame Hessian into the body frame of x_i via the SE(3) adjoint,
   // then invert to get the covariance. Falls back to identity adjoint on the first frame.
-  x_j_odom.pose_covariance = covariance_world_frame;
-  publish(x_j_odom, header, "odom", config_.body_frame);
+  odom_0_j.pose_covariance = covariance_wrt_map;
+  publish(odom_0_j, header, "odom", config_.body_frame);
   publish(acc_bias_, header, "bias/acc");
   publish(gyro_bias_, header, "bias/gyro");
 }
 
 void Pipeline::publishDebugClouds(const Pointcloud& source_filtered,
                                   const Pointcloud& source_coarse, const Pointcloud& source_fine,
-                                  const Pointcloud& undistorted_cloud,
+                                  const Pointcloud& full_registered,
                                   const IntensityView& intensities, const Transform& T_W_I,
                                   const Header& header) {
   Pointcloud source_registered = T_W_I * source_filtered;
   Pointcloud fine_registered = T_W_I * source_fine;
   Pointcloud coarse_registered = T_W_I * source_coarse;
+  publish(IntensityPointcloud(full_registered, intensities), header, "points/registered");
   publish(fine_registered, header, "points/fine");
   publish(coarse_registered, header, "points/coarse");
   publish(source_registered, header, "points/effective");
-  Header body_header = header;
-  body_header.frame = config_.body_frame;
-  // The undistorted cloud keeps its original point order, so the snapshotted
-  // intensity row still lines up with it.
-  publish(IntensityPointcloud(undistorted_cloud, intensities), body_header, "points/undistorted");
+  
 }
 
 void Pipeline::logTUM(double timestamp, const Transform& pose) {
