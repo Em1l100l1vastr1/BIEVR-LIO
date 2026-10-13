@@ -439,7 +439,6 @@ void Pipeline::publishDebugClouds(const Pointcloud& source_filtered,
   Pointcloud source_registered = T_W_I * source_filtered;
   Pointcloud fine_registered = T_W_I * source_fine;
   Pointcloud coarse_registered = T_W_I * source_coarse;
-  publish(IntensityPointcloud(full_registered, intensities), header, "points/registered");
   publish(fine_registered, header, "points/fine");
   publish(coarse_registered, header, "points/coarse");
   publish(source_registered, header, "points/effective");
