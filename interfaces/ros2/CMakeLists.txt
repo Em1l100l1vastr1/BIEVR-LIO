@@ -62,7 +62,7 @@ endif()
 # directly.
 add_executable(process_topics src/process_topics.cpp)
 add_executable(process_bag src/process_bag.cpp)
-add_executable(process_cloud src/process_cloud.cpp)
+add_executable(cloud_compressor_node src/cloud_compressor_node.cpp)
 
 foreach(target process_topics process_bag)
   ament_target_dependencies(${target} ${ament_dependencies})
@@ -82,10 +82,10 @@ foreach(target process_topics process_bag)
 endforeach()
 
 # ---- Install ----
-ament_target_dependencies(process_cloud rclcpp point_cloud_transport sensor_msgs)
-target_include_directories(process_cloud PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+ament_target_dependencies(cloud_compressor_node rclcpp point_cloud_transport sensor_msgs)
+target_include_directories(cloud_compressor_node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-install(TARGETS process_topics process_bag process_cloud
+install(TARGETS process_topics process_bag cloud_compressor_node
   DESTINATION lib/${PROJECT_NAME}
 )
 install(DIRECTORY include/

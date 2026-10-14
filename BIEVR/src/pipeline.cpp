@@ -399,21 +399,6 @@ void Pipeline::publishLatestState(const Header& header) {
     const M6 hessian_wrt_body = Ad.transpose() * latest_reg_hessian_ * Ad;
     x_i_j.covariance = (hessian_wrt_body + 1e-6 * M6::Identity()).inverse();
 
-    /**
-    // Noise makes it seem like the robot is moving when it is actually stationary.
-    if (x_i_j.pose.translation().norm() < 0.01) {
-      x_i_j.pose = Transform(Eigen::Isometry3d::Identity());
-      x_i_j.covariance = M6::Identity() * 1e-5;
-
-      // Keep the last pose because we haven't moved
-      states_.rbegin()->second.p = x_0_i.p;
-      states_.rbegin()->second.quat = x_0_i.quat;
-      odom_0_j.pose = Transform(x_0_i.quat, x_0_i.p);
-      odom_0_j.linear_velocity  = Eigen::Vector3d::Zero();
-      odom_0_j.angular_velocity = Eigen::Vector3d::Zero();
-    }
-    /**/
-
     publish(x_i_j, header, "rel_odom", config_.body_frame);
   }
 
