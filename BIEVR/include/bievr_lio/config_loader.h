@@ -157,6 +157,7 @@ inline void printConfigOverview(const Config& config) {
   os << "  weighted:             " << yn(hc.map.weighted) << "\n";
   os << "  frame:                " << hc.map_frame << "\n";
   os << "  publish_tf:           " << yn(hc.publish_tf) << "\n";
+  os << "  to_baselink:          " << yn(hc.to_baselink) << "\n";
   os << "preprocess:\n";
   os << "  downsample_res_m:     " << hc.preprocess.downsample_resolution << "\n";
   os << "  informed_sampling:    " << yn(hc.preprocess.informed_sampling) << "\n";
@@ -234,6 +235,7 @@ inline bool loadConfigFromYaml(const std::vector<std::string>& yaml_paths, Confi
   // The map frame is the parent (odometry) frame for published poses/clouds.
   hc.map_frame = yaml.get<std::string>("map", "frame", hc.map_frame);
   hc.publish_tf = yaml.get<bool>("map", "publish_tf", true);
+  hc.to_baselink = yaml.get<bool>("map", "to_baselink", false);
 
   // --- preprocess ---
   if (!config_internal::getPositive(yaml, "preprocess", "downsample_resolution_m", 0.15,

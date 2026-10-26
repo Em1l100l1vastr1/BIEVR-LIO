@@ -22,12 +22,13 @@ class Pipeline {
     BIEVRMap::Config map;
     bool print_timing = false;
     bool publish_tf = true;  // Publish the odometry pose as a TF transform
+    bool to_baselink = false;  // Publish the odometry pose as a TF transform to base_link frame
     bool publish_all_clouds = false;
     bool print_debug = false;      // when true, lower the log level to show DEBUG messages
     bool print_dashboard = false;  // when true, print the fancy live status dashboard
     // Path to the ASCII art shown at the top of the dashboard (e.g. bievr_ascii.txt).
     std::string dashboard_ascii_path = "";
-    Transform T_I_L = Transform::Identity();  // Transform from LiDAR to IMU frame
+    Transform T_I_L = Transform::Identity();  // Transform LiDAR in IMU reference frame
     Transform T_L_B = Transform::Identity();  // Transform from LiDAR to Base frame
     std::string map_frame = "map";
     std::string body_frame = "body";
@@ -105,6 +106,8 @@ class Pipeline {
   Config config_;
   std::map<uint64_t, State> states_;
   std::map<uint64_t, ImuIntegratorPtr> imu_integrators_;
+
+  Transform T_I_B_ = Transform::Identity(); 
 
   size_t seq_counter_ = 0;
   Phase phase_ = Phase::NeedBias;
