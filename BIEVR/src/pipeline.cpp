@@ -38,6 +38,11 @@ Pipeline::Pipeline(const Config& config) : config_(config) {
     }
   }
 
+  // Creating only once the transform
+  if (config_.to_baselink) {
+    T_I_B_ = config_.T_I_L * config_.T_L_B;
+  }
+
   if (config_.print_dashboard) {
     printDashboardBanner(dashboard_.ascii, "BIEVR-LIO  WAITING FOR DATA");
   }
@@ -379,7 +384,7 @@ void Pipeline::publishLatestState(const Header& header) {
   }
 
   // Variables name conventions: name_idx0_idx1_ means the variable is expressed in the frame of idx0 and represents the state at idx1.
-  // For example, x_0_j is the state at time j expressed in the frame of time 0. (The frame of time 0 is the world/odom frame.)
+  // For example, x_0_j is the state at time j expressed in the frame of time 0. (The frame of time 0 is the world/odom frame.) T_W_I
   const State& x_0_j = states_.rbegin()->second;
   Odometry odom_0_j;
   PoseCovariance x_i_j; 
@@ -411,7 +416,31 @@ void Pipeline::publishLatestState(const Header& header) {
   // Rotate the world-frame Hessian into the body frame of x_i via the SE(3) adjoint,
   // then invert to get the covariance. Falls back to identity adjoint on the first frame.
   odom_0_j.pose_covariance = covariance_wrt_map;
-  publish(odom_0_j, header, "odom", config_.body_frame);
+
+  std::string child_frame = config_.body_frame;
+
+  if (config_.to_baselink)
+  {
+    // Odometry wrt baselink
+    const Transform T_W_I(x_0_j.quat, x_0_j.p);
+    child_frame = std::string{"base_link"};
+    odom_0_j.pose = T_W_I * T_I_B_;
+
+    // Velocities wrt baselink
+    const Transform T_B_I(T_I_B_.inverse());
+    const V3 v_I(odom_0_j.linear_velocity);
+    const V3 w_I(odom_0_j.angular_velocity);
+
+    const Eigen::Matrix3d R_B_I = T_B_I.rotation();
+    const V3 w_B = R_B_I * w_I;
+    const V3 v_B = R_B_I * v_I - w_B.cross(T_B_I.translation());
+
+    odom_0_j.linear_velocity  = v_B;
+    odom_0_j.angular_velocity = w_B;
+
+  }
+
+  publish(odom_0_j, header, "odom", child_frame);
   publish(acc_bias_, header, "bias/acc");
   publish(gyro_bias_, header, "bias/gyro");
 }
